@@ -30,7 +30,18 @@ class ObservingBlock(object):
     constraints on observations.
     """
     @u.quantity_input(duration=u.second)
-    def __init__(self, target, duration, priority, configuration={}, constraints=None, name=None):
+    def __init__(self, target, duration, priority,
+                 configuration={},
+                 constraints=None,
+                 name=None,
+                 Ngoal=1,
+                 last_observed=Time('2023-01-01 00:00'),
+                 last_observed_group=Time('2023-01-01 00:00'),
+                 Nachieved=0,
+                 n_in_unit=None,
+                 Nachieved_group=None,
+                 group='',
+                 group_type=''):
         """
         Parameters
         ----------
@@ -55,6 +66,36 @@ class ObservingBlock(object):
         name : integer or str
             User-defined name or ID.
 
+        Ngoal : integer
+            Number of slots that you want to schedule this observing block. If -1, use it infinite time
+
+        Nachieved : integer
+            Number of slots that this observing block has been already scheduled.
+
+        group : str
+            List of other members (seperated by = ) in the group
+            that this block belongs to.
+
+        group_type : str
+            'equal' or 'either'. Equal means that the group members should be
+            scheduled as equal amount as possible. Either means that the cadence is
+            judged by the lated observed time of any of the group members
+
+        Nachieved_group : integer
+            Averaged number of slots that the other targets in the group has been already scheduled.
+
+        n_in_unit : integer
+            Number of slots that consist of a larger unit of this block.
+
+        last_observed : `astropy.time.Time`
+            The time of the last observation of this block
+
+        last_observed : `astropy.time.Time`
+            The time of the last observation of this group
+
+        duration_offsets : `~astropy.units.Quantity`
+            List of [start, middle, end] of the block duration as a relative offset from the start
+
         """
         self.target = target
         self.duration = duration
@@ -64,6 +105,15 @@ class ObservingBlock(object):
         self.name = name
         self.start_time = self.end_time = None
         self.observer = None
+        self.Ngoal = Ngoal
+        self.Nachieved = Nachieved
+        self.Nachieved_group = Nachieved_group
+        self.group = group
+        self.group_type = group_type
+        self.n_in_unit = n_in_unit
+        self.last_observed = last_observed
+        self.last_observed_group = last_observed_group
+        self.duration_offsets = u.Quantity([0*u.second, duration/2, duration])
 
     def __repr__(self):
         orig_repr = object.__repr__(self)
@@ -519,7 +569,7 @@ class Scheduler(object):
         self.gap_time = gap_time
         self.time_resolution = time_resolution
 
-    def __call__(self, blocks, schedule):
+    def __call__(self, blocks, schedule, **kwargs):
         """
         Schedule a set of `~astroplan.scheduling.ObservingBlock` objects.
 
@@ -541,13 +591,17 @@ class Scheduler(object):
             objects with and without populated ``block`` objects containing either
             `~astroplan.scheduling.TransitionBlock` or `~astroplan.scheduling.ObservingBlock`
             objects with populated ``start_time`` and ``end_time`` or ``duration`` attributes
+        modified_blocks: list of `~astroplan.scheduling.ObservingBlock` objects
+            Not under the schedule, but just like the input obsblocks with
+            updated Nachived(_group), last_observed(_group),
+            and dropping the completed blocks
         """
         self.schedule = schedule
         self.schedule.observer = self.observer
         # these are *shallow* copies
         copied_blocks = [copy.copy(block) for block in blocks]
-        schedule = self._make_schedule(copied_blocks)
-        return schedule
+        schedule, modified_blocks = self._make_schedule(copied_blocks, **kwargs)
+        return schedule, modified_blocks
 
     @abstractmethod
     def _make_schedule(self, blocks):
@@ -971,7 +1025,7 @@ class Transitioner(object):
         self.slew_rate = slew_rate
         self.instrument_reconfig_times = instrument_reconfig_times
 
-    def __call__(self, oldblock, newblock, start_time, observer):
+    def __call__(self, oldblock, newblock, start_time, observer, sep=None):
         """
         Determines the amount of time needed to transition from one observing
         block to another.  This uses the parameters defined in
@@ -996,16 +1050,18 @@ class Transitioner(object):
         """
         components = {}
         if (self.slew_rate is not None and (oldblock is not None) and (newblock is not None)):
-            # use the constraints cache for now, but should move that machinery
-            # to observer
-            from .constraints import _get_altaz
-            from .target import get_skycoord
-            if oldblock.target != newblock.target:
-                targets = get_skycoord([oldblock.target, newblock.target])
-                aaz = _get_altaz(start_time, observer, targets)['altaz']
-                sep = aaz[0].separation(aaz[1])
-                if sep/self.slew_rate > 1 * u.second:
-                    components['slew_time'] = sep / self.slew_rate
+            if sep == None:
+                # use the constraints cache for now, but should move that machinery
+                # to observer
+                from .constraints import _get_altaz
+                from .target import get_skycoord
+                if oldblock.target != newblock.target:
+                    targets = get_skycoord([oldblock.target, newblock.target])
+                    aaz = _get_altaz(start_time, observer, targets)['altaz']
+                    sep = aaz[0].separation(aaz[1])
+
+            if sep/self.slew_rate > 1 * u.second:
+                components['slew_time'] = sep / self.slew_rate
 
         if self.instrument_reconfig_times is not None:
             components.update(self.compute_instrument_transitions(oldblock, newblock))

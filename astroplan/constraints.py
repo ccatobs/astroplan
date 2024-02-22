@@ -225,7 +225,7 @@ class Constraint(object):
 
     def __call__(self, observer, targets, times=None,
                  time_range=None, time_grid_resolution=0.5*u.hour,
-                 grid_times_targets=False):
+                 grid_times_targets=False, **kwargs):
         """
         Compute the constraint for this class
 
@@ -269,7 +269,7 @@ class Constraint(object):
             else:
                 targets = targets[..., np.newaxis]
         times, targets = observer._preprocess_inputs(times, targets, grid_times_targets=False)
-        result = self.compute_constraint(times, observer, targets)
+        result = self.compute_constraint(times, observer, targets, **kwargs)
 
         # make sure the output has the same shape as would result from
         # broadcasting times and targets against each other
@@ -1246,7 +1246,7 @@ def observability_table(constraints, observer, targets, times=None,
     return tab
 
 
-def min_best_rescale(vals, min_val, max_val, less_than_min=1):
+def min_best_rescale(vals, min_val, max_val, less_than_min=1, greater_than_max=0):
     """
     rescales an input array ``vals`` to be a score (between zero and one),
     where the ``min_val`` goes to one, and the ``max_val`` goes to zero.
@@ -1259,10 +1259,13 @@ def min_best_rescale(vals, min_val, max_val, less_than_min=1):
         worst acceptable value (rescales to 0)
     max_val : float
         best value cared about (rescales to 1)
-    less_than_min : 0 or 1
+    less_than_min : 0 or 1 (or between)
         what is returned for ``vals`` below ``min_val``. (in some cases
         anything less than ``min_val`` should also return one,
-        in some cases it should return zero)
+        in some cases it should return zero, in some cases a value in between)
+    greater_than_max : 0 or a small value
+        what is returned for ``vals`` above ``max_val``. (usually zero,
+        but in some cases it may return not exactly zero)
 
     Returns
     -------
@@ -1281,16 +1284,24 @@ def min_best_rescale(vals, min_val, max_val, less_than_min=1):
     >>> min_best_rescale(airmasses, 1, 2.25, less_than_min = 0)  # doctest: +FLOAT_CMP
     array([ 1. ,  0.6,  0.2,  0. , 0. ])
     """
-    rescaled = (vals - max_val) / (min_val - max_val)
+    # rescaled = (vals - max_val) / (min_val - max_val)
     below = vals < min_val
     above = vals > max_val
+    # rescaled[below] = less_than_min
+    # rescaled[above] = 0
+
+    # generalize to allow non-zero values below and above
+    # y=ax+b between below and above
+    a = (greater_than_max - 1) / (max_val - min_val)
+    b = (max_val - greater_than_max * min_val) / (max_val - min_val)
+    rescaled = a * (vals) + b
     rescaled[below] = less_than_min
-    rescaled[above] = 0
+    rescaled[above] = greater_than_max
 
     return rescaled
 
 
-def max_best_rescale(vals, min_val, max_val, greater_than_max=1):
+def max_best_rescale(vals, min_val, max_val, greater_than_max=1, less_than_min=0):
     """
     rescales an input array ``vals`` to be a score (between zero and one),
     where the ``max_val`` goes to one, and the ``min_val`` goes to zero.
@@ -1303,10 +1314,13 @@ def max_best_rescale(vals, min_val, max_val, greater_than_max=1):
         worst acceptable value (rescales to 0)
     max_val : float
         best value cared about (rescales to 1)
-    greater_than_max : 0 or 1
+    greater_than_max : 0 or 1 (or between)
         what is returned for ``vals`` above ``max_val``. (in some cases
         anything higher than ``max_val`` should also return one,
-        in some cases it should return zero)
+        in some cases it should return zero, in some cases a value in between)
+    less_than_min : 0 or a small value
+        what is returned for ``vals`` below ``min_val``. (usually zero,
+        but in some cases it may return not exactly zero)
 
     Returns
     -------
@@ -1326,10 +1340,18 @@ def max_best_rescale(vals, min_val, max_val, greater_than_max=1):
     >>> max_best_rescale(altitudes, 35, 60)  # doctest: +FLOAT_CMP
     array([ 0. , 0. , 0.2, 0.4, 0.8, 1. ])
     """
-    rescaled = (vals - min_val) / (max_val - min_val)
+    # rescaled = (vals - min_val) / (max_val - min_val)
     below = vals < min_val
     above = vals > max_val
-    rescaled[below] = 0
+    # rescaled[below] = 0
+    # rescaled[above] = greater_than_max
+
+    # generalize to allow non-zero values below and above
+    # y=ax+b between below and above
+    a = (1 - less_than_min) / (max_val - min_val)
+    b = (less_than_min * max_val - min_val) / (max_val - min_val)
+    rescaled = a * (vals) + b
+    rescaled[below] = less_than_min
     rescaled[above] = greater_than_max
 
     return rescaled

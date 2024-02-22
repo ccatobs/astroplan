@@ -7,9 +7,9 @@ from abc import ABCMeta
 
 # Third-party
 import astropy.units as u
-from astropy.coordinates import SkyCoord, ICRS, UnitSphericalRepresentation
+from astropy.coordinates import SkyCoord, ICRS, UnitSphericalRepresentation, AltAz, get_body
 
-__all__ = ["Target", "FixedTarget", "NonFixedTarget"]
+__all__ = ["Target", "FixedTarget", "NonFixedTarget", "ConstantElevationTarget", "SolarSystemTarget"]
 
 # Docstring code examples include printed SkyCoords, but the format changed
 # in astropy 1.3. Thus the doctest needs astropy >=1.3 and this is the
@@ -190,7 +190,78 @@ class NonFixedTarget(Target):
     """
 
 
-def get_skycoord(targets):
+class ConstantElevationTarget(Target):
+    """
+    Coordinates and metadata for an object that is "fixed" at the Altitude
+    and having a range of Azimuth
+
+    """
+
+    def __init__(self, alt, az_min, az_max, name=None, ramin=None, decc=None, **kwargs):
+        """
+        Parameters
+        ----------
+        alt : `~astropy.units.Quantity`
+            Constant altitude of the target
+        az_min : `~astropy.units.Quantity`
+            Minimum azimuth of the scan/target
+        az_max : `~astropy.units.Quantity`
+            Maximum azimuth of the scan/target
+
+          note - if az_min > az_max, this indicates that the scan goes from
+                 az_min -> 360 deg / 0 deg -> az_max
+
+        name : str (optional)
+            Name of the target, used for plotting and representing the target
+            as a string
+        ramin : `~astropy.coordinates.SkyCoord.ra` (optional)
+            RA min (first rising edge of the strip) of the target
+        decc : `~astropy.coordinates.SkyCoord.dec` (optional)
+            DEC center of the target
+
+        """
+        if az_min <= az_max:
+            az_c = (az_min + az_max)/2.0
+        else:
+            az_c = (az_min + 360.*u.deg + az_max)/2.0
+            if az_c > 360.*u.deg:
+                az_c = az_c - 360.*u.deg
+
+        self.name = name
+        self.az_min = az_min
+        self.az_max = az_max
+        self.az_c = az_c
+        self.alt = alt
+        self.ramin = ramin
+        self.decc = decc
+
+
+class SolarSystemTarget(Target):
+    """
+    Coordinates and metadata for an solar system object
+
+    """
+
+    def __init__(self, eph_name, name=None, **kwargs):
+        """
+        Parameters
+        ----------
+        eph_name : str
+            Name of the target, used in get_body
+
+        name : str (optional)
+            Name of the target, used for plotting and representing the target
+            as a string
+
+        Two names are introduced so that an optional name can have more information
+        than a rigid name used in get_body
+
+        """
+        self.eph_name = eph_name
+        self.name = name
+
+
+def get_skycoord(targets, times=None, observer=None):
     """
     Return an `~astropy.coordinates.SkyCoord` object.
 
@@ -205,16 +276,85 @@ def get_skycoord(targets):
     targets : list, `~astropy.coordinates.SkyCoord`, `Fixedtarget`
         either a single target or a list of targets
 
+    times:  `~astropy.time.Time`
+        Array of times on which to calculate the coordinates. It can be None
+        only when all targets are FixedTargets
+
+    If either of targets and times is a single target/time and the other one is a list,
+    it is broadcasted. If both are lists, they should have a 1-to-1 association
+    (not 2D grid)
+
+    observer -- `~astroplan.Observer`
+
     Returns
     --------
     coord : `~astropy.coordinates.SkyCoord`
         a single SkyCoord object, which may be non-scalar
     """
-    if not isinstance(targets, list):
-        return getattr(targets, 'coord', targets)
 
-    # get the SkyCoord object itself
-    coords = [getattr(target, 'coord', target) for target in targets]
+    try:
+        target_size = targets.size
+    except:
+        try:
+            target_size = len(targets)
+        except:
+            target_size = 1
+
+    #print(f'target size is {target_size}, time size is {times.size}')
+    if not isinstance(targets, list):
+        targets = [targets]
+
+    if times is not None:
+        if target_size != 1 and times.size != 1 and target_size != times.size:
+            raise ValueError('Either targets or times should be scalor, or the lengths of two lists should match')
+    
+    coords = []
+
+    for itarget, target in enumerate(targets):
+        if times is None:
+            time = None
+        elif times.size == 1 or target_size == 1:
+            time = times
+        else:
+            time = times[itarget]
+
+        if isinstance(target, FixedTarget):
+            coord = getattr(target, 'coord')
+            if target_size == 1:
+                for i in range(times.size):
+                    coords.append(coord)
+            else:
+                coords.append(coord)
+        else:
+            if isinstance(target, ConstantElevationTarget):
+                if time is None:
+                    raise ValueError('times should be given to calculate the coordinates for ConstantElevationTarget')
+                elif time.size == 1:
+                    coord = SkyCoord(target.az_c, target.alt,
+                                     frame=AltAz(
+                                         obstime=time, location=observer.location))
+                    coords.append(coord)
+                else:
+                    for i in range(times.size):
+                        coord = SkyCoord(target.az_c, target.alt,
+                                         frame=AltAz(
+                                             obstime=time[i],
+                                             location=observer.location))
+                        coords.append(coord)
+            elif isinstance(target, SolarSystemTarget):
+                if time is None:
+                    raise ValueError('times should be given to calculate the coordinates for SolarSystemTarget')
+                coord = get_body(target.eph_name.lower(), time, location=observer.location)
+                coords.append(coord)
+            else:
+                coord = target
+                coords.append(coord)
+
+    if target_size == 1:
+        if not isinstance(targets[0], ConstantElevationTarget) or times.size == 1:
+            return SkyCoord(coords)
+
+    coords = np.array(coords).squeeze().tolist()
 
     # are all SkyCoordinate's in equivalent frames? If not, convert to ICRS
     convert_to_icrs = not all(

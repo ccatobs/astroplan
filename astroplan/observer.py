@@ -516,7 +516,7 @@ class Observer(object):
             return time, None
 
         # convert any kind of target argument to non-scalar SkyCoord
-        target = get_skycoord(target)
+        target = get_skycoord(target, times=time, observer=self)
         if grid_times_targets:
             if target.isscalar:
                 # ensure we have a (1, 1) shape coord
