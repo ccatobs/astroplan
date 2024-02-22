@@ -8,6 +8,7 @@ from abc import ABCMeta
 # Third-party
 import astropy.units as u
 from astropy.coordinates import SkyCoord, ICRS, UnitSphericalRepresentation, AltAz, get_body
+import numpy as np
 
 __all__ = ["Target", "FixedTarget", "NonFixedTarget", "ConstantElevationTarget", "SolarSystemTarget"]
 
