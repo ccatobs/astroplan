@@ -198,7 +198,9 @@ class ConstantElevationTarget(Target):
 
     """
 
-    def __init__(self, alt, az_min, az_max, name=None, ramin=None, decc=None, **kwargs):
+    def __init__(self, alt, az_min, az_max,
+                 name=None, ramin=None, decc=None, alt_var=False,
+                 min_alt=None, max_alt=None, **kwargs):
         """
         Parameters
         ----------
@@ -219,22 +221,31 @@ class ConstantElevationTarget(Target):
             RA min (first rising edge of the strip) of the target
         decc : `~astropy.coordinates.SkyCoord.dec` (optional)
             DEC center of the target
-
+        alt_var (boolean) -- Flag to specify constant elevation scans 
+                          with variable elevations
+        min_alt : `~astropy.units.Quantity`
+            Minimum altitude of the scan/target
+        max_alt : `~astropy.units.Quantity`
+            Maximum altitude of the scan/target
         """
-        if az_min <= az_max:
-            az_c = (az_min + az_max)/2.0
-        else:
-            az_c = (az_min + 360.*u.deg + az_max)/2.0
-            if az_c > 360.*u.deg:
-                az_c = az_c - 360.*u.deg
+
+        # if az_min <= az_max:
+        #     az_c = (az_min + az_max)/2.0
+        # else:
+        #     az_c = (az_min + 360.*u.deg + az_max)/2.0
+        #     if az_c > 360.*u.deg:
+        #         az_c = az_c - 360.*u.deg
 
         self.name = name
         self.az_min = az_min
         self.az_max = az_max
-        self.az_c = az_c
+        #self.az_c = az_c
         self.alt = alt
         self.ramin = ramin
         self.decc = decc
+        self.alt_var = alt_var
+        self.min_alt = min_alt
+        self.max_alt = max_alt
 
 
 class SolarSystemTarget(Target):
@@ -293,6 +304,9 @@ def get_skycoord(targets, times=None, observer=None):
         a single SkyCoord object, which may be non-scalar
     """
 
+    # Note: in case of ConstantElevationTarget, corresponding coordinates for
+    #       az_min is returned
+
     try:
         target_size = targets.size
     except:
@@ -331,13 +345,13 @@ def get_skycoord(targets, times=None, observer=None):
                 if time is None:
                     raise ValueError('times should be given to calculate the coordinates for ConstantElevationTarget')
                 elif time.size == 1:
-                    coord = SkyCoord(target.az_c, target.alt,
+                    coord = SkyCoord(target.az_min, target.alt,
                                      frame=AltAz(
                                          obstime=time, location=observer.location))
                     coords.append(coord)
                 else:
                     for i in range(times.size):
-                        coord = SkyCoord(target.az_c, target.alt,
+                        coord = SkyCoord(target.az_min, target.alt,
                                          frame=AltAz(
                                              obstime=time[i],
                                              location=observer.location))
