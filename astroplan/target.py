@@ -199,7 +199,7 @@ class ConstantElevationTarget(Target):
     """
 
     def __init__(self, alt, az_min, az_max,
-                 name=None, ramin=None, decc=None, alt_var=False,
+                 name=None, coord_edge=None, alt_var=False,
                  min_alt=None, max_alt=None, **kwargs):
         """
         Parameters
@@ -217,10 +217,9 @@ class ConstantElevationTarget(Target):
         name : str (optional)
             Name of the target, used for plotting and representing the target
             as a string
-        ramin : `~astropy.coordinates.SkyCoord.ra` (optional)
-            RA min (first rising edge of the strip) of the target
-        decc : `~astropy.coordinates.SkyCoord.dec` (optional)
-            DEC center of the target
+        coord_edge : `~astropy.coordinates.SkyCoord` (optional)
+            SkyCoord of the first rising edge of the strip.
+            If alt_var is True, this must be specified
         alt_var (boolean) -- Flag to specify constant elevation scans 
                           with variable elevations
         min_alt : `~astropy.units.Quantity`
@@ -241,11 +240,13 @@ class ConstantElevationTarget(Target):
         self.az_max = az_max
         #self.az_c = az_c
         self.alt = alt
-        self.ramin = ramin
-        self.decc = decc
+        self.coord_edge = coord_edge
         self.alt_var = alt_var
         self.min_alt = min_alt
         self.max_alt = max_alt
+
+        if self.alt_var and self.coord_edge is None:
+            raise ValueError('alt_var is True but coord_edge is not specified')
 
 
 class SolarSystemTarget(Target):
@@ -342,19 +343,22 @@ def get_skycoord(targets, times=None, observer=None):
                 coords.append(coord)
         else:
             if isinstance(target, ConstantElevationTarget):
+                coord = getattr(target, 'coord_edge')
                 if time is None:
                     raise ValueError('times should be given to calculate the coordinates for ConstantElevationTarget')
                 elif time.size == 1:
-                    coord = SkyCoord(target.az_min, target.alt,
-                                     frame=AltAz(
-                                         obstime=time, location=observer.location))
+                    if coord is None:
+                        coord = SkyCoord((target.az_min+target.az_max), target.alt,
+                                         frame=AltAz(
+                                             obstime=time, location=observer.location))
                     coords.append(coord)
                 else:
                     for i in range(times.size):
-                        coord = SkyCoord(target.az_min, target.alt,
-                                         frame=AltAz(
-                                             obstime=time[i],
-                                             location=observer.location))
+                        if coord is None:
+                            coord = SkyCoord((target.az_min+target.az_max), target.alt,
+                                             frame=AltAz(
+                                                 obstime=time[i],
+                                                 location=observer.location))
                         coords.append(coord)
             elif isinstance(target, SolarSystemTarget):
                 if time is None:
