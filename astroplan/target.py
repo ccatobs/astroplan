@@ -343,22 +343,19 @@ def get_skycoord(targets, times=None, observer=None):
                 coords.append(coord)
         else:
             if isinstance(target, ConstantElevationTarget):
-                coord = getattr(target, 'coord_edge')
                 if time is None:
                     raise ValueError('times should be given to calculate the coordinates for ConstantElevationTarget')
                 elif time.size == 1:
-                    if coord is None:
-                        coord = SkyCoord((target.az_min+target.az_max), target.alt,
-                                         frame=AltAz(
-                                             obstime=time, location=observer.location))
+                    coord = SkyCoord((target.az_min+target.az_max), target.alt,
+                                     frame=AltAz(
+                                         obstime=time, location=observer.location))
                     coords.append(coord)
                 else:
                     for i in range(times.size):
-                        if coord is None:
-                            coord = SkyCoord((target.az_min+target.az_max), target.alt,
-                                             frame=AltAz(
-                                                 obstime=time[i],
-                                                 location=observer.location))
+                        coord = SkyCoord((target.az_min+target.az_max), target.alt,
+                                         frame=AltAz(
+                                             obstime=time[i],
+                                             location=observer.location))
                         coords.append(coord)
             elif isinstance(target, SolarSystemTarget):
                 if time is None:
