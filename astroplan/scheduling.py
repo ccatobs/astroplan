@@ -437,7 +437,8 @@ class Schedule(object):
         for new_slot in new_slots:
             if new_slot.middle:
                 new_slot.occupied = True
-                new_slot.block = block.copy()   # to record variable parameters in blocks
+                # to record variable parameters in blocks
+                new_slot.block = copy.deepcopy(block)
         self.slots = earlier_slots + new_slots + later_slots
         return earlier_slots + new_slots + later_slots
 
