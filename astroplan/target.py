@@ -255,7 +255,7 @@ class SolarSystemTarget(Target):
 
     """
 
-    def __init__(self, eph_name, name=None, **kwargs):
+    def __init__(self, eph_name, name=None, naif_id=None, **kwargs):
         """
         Parameters
         ----------
@@ -265,6 +265,10 @@ class SolarSystemTarget(Target):
         name : str (optional)
             Name of the target, used for plotting and representing the target
             as a string
+
+        naif_id : int (optional)
+            NAIF ID of the object. Needed for a smaller body where get_body
+            does not cover.
 
         Two names are introduced so that an optional name can have more information
         than a rigid name used in get_body
