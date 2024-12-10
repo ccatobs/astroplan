@@ -35,13 +35,16 @@ class ObservingBlock(object):
                  constraints=None,
                  name=None,
                  Ngoal=1,
+                 Ngoal_max=np.nan,
                  last_observed=Time('2023-01-01 00:00'),
                  last_observed_group=Time('2023-01-01 00:00'),
                  Nachieved=0,
                  n_in_unit=None,
                  Nachieved_group=None,
                  group='',
-                 group_type=''):
+                 group_type='',
+                 completed=False,
+                 ):
         """
         Parameters
         ----------
@@ -66,10 +69,16 @@ class ObservingBlock(object):
         name : integer or str
             User-defined name or ID.
 
-        Ngoal : integer
-            Number of slots that you want to schedule this observing block. If -1, use it infinite time
+        Ngoal : integer or float
+            Number of slots that you want to schedule this observing block.
+            If -1, use it infinite time
 
-        Nachieved : integer
+        Ngoal_max : integer or float
+            Maximum number of slots that you want to schedule this observing block,
+            with a torelance of inbalanced scheduling in a group (only valid when
+            group_type is equal, otherwise np.nan)
+
+        Nachieved : integer or float
             Number of slots that this observing block has been already scheduled.
 
         group : str
@@ -96,6 +105,9 @@ class ObservingBlock(object):
         duration_offsets : `~astropy.units.Quantity`
             List of [start, middle, end] of the block duration as a relative offset from the start
 
+        completed : boolean
+            Whether this ObsBlock is completed (no further scheduling)
+
         """
         self.target = target
         self.duration = duration
@@ -106,6 +118,7 @@ class ObservingBlock(object):
         self.start_time = self.end_time = None
         self.observer = None
         self.Ngoal = Ngoal
+        self.Ngoal_max = Ngoal_max
         self.Nachieved = Nachieved
         self.Nachieved_group = Nachieved_group
         self.group = group
@@ -114,6 +127,7 @@ class ObservingBlock(object):
         self.last_observed = last_observed
         self.last_observed_group = last_observed_group
         self.duration_offsets = u.Quantity([0*u.second, duration/2, duration])
+        self.completed = completed
 
     def __repr__(self):
         orig_repr = object.__repr__(self)
