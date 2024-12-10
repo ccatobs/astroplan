@@ -36,6 +36,7 @@ class ObservingBlock(object):
                  name=None,
                  Ngoal=1,
                  Ngoal_max=np.nan,
+                 Ngoal_tot_group=np.nan,
                  last_observed=Time('2023-01-01 00:00'),
                  last_observed_group=Time('2023-01-01 00:00'),
                  Nachieved=0,
@@ -78,6 +79,10 @@ class ObservingBlock(object):
             with a torelance of inbalanced scheduling in a group (only valid when
             group_type is equal, otherwise np.nan)
 
+        Ngoal_tot_group : integer or float
+            Total number of slots that you want to schedule the group that 
+            this observing block belongs to.
+
         Nachieved : integer or float
             Number of slots that this observing block has been already scheduled.
 
@@ -119,6 +124,7 @@ class ObservingBlock(object):
         self.observer = None
         self.Ngoal = Ngoal
         self.Ngoal_max = Ngoal_max
+        self.Ngoal_tot_group = Ngoal_tot_group
         self.Nachieved = Nachieved
         self.Nachieved_group = Nachieved_group
         self.group = group
