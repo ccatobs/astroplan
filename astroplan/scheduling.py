@@ -42,6 +42,7 @@ class ObservingBlock(object):
                  Nachieved=0,
                  n_in_unit=None,
                  Nachieved_group=None,
+                 Nachieved_tot_group=None,
                  group='',
                  group_type='',
                  completed=False,
@@ -95,8 +96,13 @@ class ObservingBlock(object):
             scheduled as equal amount as possible. Either means that the cadence is
             judged by the lated observed time of any of the group members
 
-        Nachieved_group : integer
-            Averaged number of slots that the other targets in the group has been already scheduled.
+        Nachieved_group : integer or float
+            Averaged number of slots that the other targets in the group
+            has been already scheduled.
+
+        Nachieved_tot_group : integer or float
+            Total number of slots that this group (including itself)
+            has been already scheduled.
 
         n_in_unit : integer
             Number of slots that consist of a larger unit of this block.
@@ -108,7 +114,8 @@ class ObservingBlock(object):
             The time of the last observation of this group
 
         duration_offsets : `~astropy.units.Quantity`
-            List of [start, middle, end] of the block duration as a relative offset from the start
+            List of [start, middle, end] of the block duration as 
+            a relative offset from the start
 
         completed : boolean
             Whether this ObsBlock is completed (no further scheduling)
@@ -127,6 +134,7 @@ class ObservingBlock(object):
         self.Ngoal_tot_group = Ngoal_tot_group
         self.Nachieved = Nachieved
         self.Nachieved_group = Nachieved_group
+        self.Nachieved_tot_group = Nachieved_tot_group
         self.group = group
         self.group_type = group_type
         self.n_in_unit = n_in_unit
