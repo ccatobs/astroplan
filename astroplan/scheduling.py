@@ -46,6 +46,7 @@ class ObservingBlock(object):
                  group='',
                  group_type='',
                  completed=False,
+                 additional_params={},
                  ):
         """
         Parameters
@@ -120,6 +121,9 @@ class ObservingBlock(object):
         completed : boolean
             Whether this ObsBlock is completed (no further scheduling)
 
+        additional_params : dict
+            Additional parameters needed in scheduling
+
         """
         self.target = target
         self.duration = duration
@@ -142,6 +146,7 @@ class ObservingBlock(object):
         self.last_observed_group = last_observed_group
         self.duration_offsets = u.Quantity([0*u.second, duration/2, duration])
         self.completed = completed
+        self.additional_params = additional_params
 
     def __repr__(self):
         orig_repr = object.__repr__(self)
