@@ -7,7 +7,8 @@ from abc import ABCMeta
 
 # Third-party
 import astropy.units as u
-from astropy.coordinates import SkyCoord, ICRS, UnitSphericalRepresentation, AltAz, get_body
+from astropy.coordinates import SkyCoord, ICRS, UnitSphericalRepresentation, AltAz
+from . import ephemeris_manager
 import numpy as np
 
 __all__ = ["Target", "FixedTarget", "NonFixedTarget", "ConstantElevationTarget", "SolarSystemTarget"]
@@ -276,6 +277,7 @@ class SolarSystemTarget(Target):
         """
         self.eph_name = eph_name
         self.name = name
+        self.naif_id = naif_id
 
 
 def get_skycoord(targets, times=None, observer=None):
@@ -364,7 +366,7 @@ def get_skycoord(targets, times=None, observer=None):
             elif isinstance(target, SolarSystemTarget):
                 if time is None:
                     raise ValueError('times should be given to calculate the coordinates for SolarSystemTarget')
-                coord = get_body(target.eph_name.lower(), time, location=observer.location)
+                coord = ephemeris_manager.get_skycoord(target.naif_id or target.eph_name, time, observer.location)
                 coords.append(coord)
             else:
                 coord = target

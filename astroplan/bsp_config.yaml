@@ -1,0 +1,55 @@
+# BSP kernel configuration for EphemerisManager
+#
+# Paths can be absolute or relative to this config file.
+#
+# Download planetary ephemeris from:
+#   https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/
+#
+# Download satellite ephemerides from:
+#   https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/satellites/
+#
+# Download asteroid ephemerides from:
+#   https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/asteroids/
+
+# Always loaded. Covers: planet barycenters (1-9), Sun (10),
+# Mercury (199), Venus (299), Moon (301), Earth (399).
+planetary: bsp/de430.bsp
+
+# Planetary satellite kernels.
+# Each gives positions relative to its planet barycenter;
+# EphemerisManager chains them with the planetary kernel automatically.
+#
+# NAIF ID scheme: first digit = planet barycenter (4=Mars, 5=Jupiter, ...)
+#   4xx = Mars system    5xx = Jupiter system   6xx = Saturn system
+#   7xx = Uranus system  8xx = Neptune system   9xx = Pluto system
+satellites:
+  - file: bsp/mar097.bsp       # Mars (499), Phobos (401), Deimos (402)
+    id_range: [401, 499]
+
+  - file: bsp/jup365.bsp       # Io (501), Europa (502), Ganymede (503), Callisto (504), ...
+    id_range: [501, 599]
+
+  - file: bsp/sat441.bsp       # Mimas (601), Enceladus (602), Titan (606), ...
+    id_range: [601, 699]
+
+  - file: bsp/ura111.bsp       # Ariel (701), Umbriel (702), Titania (703), Oberon (704), ...
+    id_range: [701, 799]
+
+  - file: bsp/nep095.bsp       # Triton (801), Nereid (802), ...
+    id_range: [801, 899]
+
+  - file: bsp/plu058.bsp       # Charon (901), Nix (902), Hydra (903), ...
+    id_range: [901, 999]
+
+# Small body (asteroid/comet) kernels.
+# These give positions relative to the Solar System Barycenter directly.
+# Add one entry per body as you download individual files.
+#
+# Asteroid NAIF IDs: 2000000 + asteroid number  (e.g. Ceres = 2000001)
+# Comet   NAIF IDs: 1000000 + comet number
+asteroids: []
+# Example:
+#   - file: bsp/asteroids/sb_ceres_ssd.bsp
+#     ids: [2000001]
+#   - file: bsp/asteroids/sb_vesta_ssd.bsp
+#     ids: [2000004]
