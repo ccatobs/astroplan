@@ -146,6 +146,136 @@ class TestResolveNaifId:
 
 
 # ---------------------------------------------------------------------------
+# _find_extra_kernel
+# ---------------------------------------------------------------------------
+
+class TestFindExtraKernel:
+    def _manager_with_config(self, config):
+        m = object.__new__(EphemerisManager)
+        m.config = config
+        m._config_dir = Path('/fake')
+        return m
+
+    def test_satellite_id_range_matched(self):
+        m = self._manager_with_config({
+            'satellites': [{'file': 'mar097.bsp', 'id_range': [401, 499]}]
+        })
+        path, is_satellite, center = m._find_extra_kernel(401)
+        assert is_satellite is True
+        assert center is None
+
+    def test_asteroid_id_range_matched(self):
+        m = self._manager_with_config({
+            'asteroids': [{'file': 'codes.bsp', 'id_range': [2000001, 2000953], 'center': 10}]
+        })
+        path, is_satellite, center = m._find_extra_kernel(2000001)
+        assert is_satellite is False
+        assert center == 10
+
+    def test_asteroid_id_range_boundary(self):
+        m = self._manager_with_config({
+            'asteroids': [{'file': 'codes.bsp', 'id_range': [2000001, 2000953], 'center': 10}]
+        })
+        _, _, center_lo = m._find_extra_kernel(2000001)
+        _, _, center_hi = m._find_extra_kernel(2000953)
+        assert center_lo == 10
+        assert center_hi == 10
+
+    def test_asteroid_id_range_out_of_range(self):
+        m = self._manager_with_config({
+            'asteroids': [{'file': 'codes.bsp', 'id_range': [2000001, 2000953], 'center': 10}]
+        })
+        path, is_satellite, center = m._find_extra_kernel(2001000)
+        assert path is None
+
+    def test_asteroid_explicit_ids(self):
+        m = self._manager_with_config({
+            'asteroids': [{'file': 'ceres.bsp', 'ids': [2000001]}]
+        })
+        path, is_satellite, center = m._find_extra_kernel(2000001)
+        assert is_satellite is False
+        assert center == 0   # default when 'center' not set
+
+    def test_asteroid_default_center_is_ssb(self):
+        m = self._manager_with_config({
+            'asteroids': [{'file': 'ssb.bsp', 'id_range': [2000001, 2000001]}]
+        })
+        _, _, center = m._find_extra_kernel(2000001)
+        assert center == 0
+
+    def test_not_found_returns_none(self):
+        m = self._manager_with_config({})
+        path, is_satellite, center = m._find_extra_kernel(2000001)
+        assert path is None
+        assert is_satellite is False
+        assert center is None
+
+
+# ---------------------------------------------------------------------------
+# get_body — Sun-chaining logic (mocked kernels)
+# ---------------------------------------------------------------------------
+
+class TestGetBodyChaining:
+    def _manager_with_kernels(self, planetary, extra, extra_path, is_satellite, center):
+        m = object.__new__(EphemerisManager)
+        m.config = {}
+        m._planetary = planetary
+        m._kernel_cache = {}
+        m._find_extra_kernel = MagicMock(return_value=(extra_path, is_satellite, center))
+        m._load_kernel = MagicMock(return_value=extra) if extra_path else MagicMock()
+        return m
+
+    def test_planetary_kernel_used_when_no_extra(self):
+        planetary = MagicMock()
+        m = self._manager_with_kernels(planetary, None, None, False, None)
+        m.get_body(499)
+        planetary.__getitem__.assert_called_once_with(499)
+
+    def test_satellite_chains_through_barycenter(self):
+        extra = MagicMock()
+        planet_bcb = MagicMock()
+        satellite_vec = MagicMock()
+        extra.__getitem__ = MagicMock(return_value=satellite_vec)
+        planetary = MagicMock()
+        planetary.__getitem__ = MagicMock(return_value=planet_bcb)
+
+        m = self._manager_with_kernels(planetary, extra, '/fake/mar097.bsp', True, None)
+        m._load_kernel = MagicMock(return_value=extra)
+        result = m.get_body(401)
+
+        planetary.__getitem__.assert_called_once_with(4)   # 401 // 100 = 4
+        assert result == planet_bcb + satellite_vec
+
+    def test_sun_relative_asteroid_chains_through_sun(self):
+        extra = MagicMock()
+        sun_vec = MagicMock()
+        asteroid_vec = MagicMock()
+        extra.__getitem__ = MagicMock(return_value=asteroid_vec)
+        planetary = MagicMock()
+        planetary.__getitem__ = MagicMock(return_value=sun_vec)
+
+        m = self._manager_with_kernels(planetary, extra, '/fake/codes.bsp', False, 10)
+        m._load_kernel = MagicMock(return_value=extra)
+        result = m.get_body(2000001)
+
+        planetary.__getitem__.assert_called_once_with('sun')
+        assert result == sun_vec + asteroid_vec
+
+    def test_ssb_relative_asteroid_returned_directly(self):
+        extra = MagicMock()
+        asteroid_vec = MagicMock()
+        extra.__getitem__ = MagicMock(return_value=asteroid_vec)
+        planetary = MagicMock()
+
+        m = self._manager_with_kernels(planetary, extra, '/fake/ceres.bsp', False, 0)
+        m._load_kernel = MagicMock(return_value=extra)
+        result = m.get_body(2000001)
+
+        planetary.__getitem__.assert_not_called()
+        assert result == asteroid_vec
+
+
+# ---------------------------------------------------------------------------
 # get_skycoord — unit tests with mocked skyfield
 # ---------------------------------------------------------------------------
 

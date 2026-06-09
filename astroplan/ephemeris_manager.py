@@ -82,7 +82,7 @@ class EphemerisManager:
         naif_id : int
             NAIF integer ID (e.g. 499 = Mars, 401 = Phobos, 2000001 = Ceres).
         """
-        extra_path, is_satellite = self._find_extra_kernel(naif_id)
+        extra_path, is_satellite, center = self._find_extra_kernel(naif_id)
 
         if extra_path is None:
             return self._planetary[naif_id]
@@ -95,8 +95,12 @@ class EphemerisManager:
             #             -> satellite        (satellite kernel)
             planet_bcb_id = naif_id // 100
             return self._planetary[planet_bcb_id] + extra_kernel[naif_id]
+        elif center == 10:
+            # Sun-relative BSP (e.g. codes_300ast).
+            # Chain: SSB -> Sun (planetary kernel) -> asteroid (extra kernel)
+            return self._planetary['sun'] + extra_kernel[naif_id]
         else:
-            # Small-body BSP gives position relative to SSB directly.
+            # SSB-relative BSP directly.
             return extra_kernel[naif_id]
 
     def resolve_naif_id(self, name):
@@ -192,19 +196,27 @@ class EphemerisManager:
 
     def _find_extra_kernel(self, naif_id):
         """
-        Return (resolved_path, is_satellite) for the BSP file covering naif_id,
-        or (None, False) if the planetary kernel is sufficient.
+        Return (resolved_path, is_satellite, center) for the BSP covering naif_id,
+        or (None, False, None) if the planetary kernel is sufficient.
+
+        center is the NAIF ID of the reference body for the extra kernel:
+        0 = SSB, 10 = Sun (only meaningful for asteroids).
         """
         for entry in self.config.get('satellites', []):
             lo, hi = entry['id_range']
             if lo <= naif_id <= hi:
-                return self._resolve(entry['file']), True
+                return self._resolve(entry['file']), True, None
 
         for entry in self.config.get('asteroids', []):
-            if naif_id in entry.get('ids', []):
-                return self._resolve(entry['file']), False
+            if 'id_range' in entry:
+                lo, hi = entry['id_range']
+                matched = lo <= naif_id <= hi
+            else:
+                matched = naif_id in entry.get('ids', [])
+            if matched:
+                return self._resolve(entry['file']), False, entry.get('center', 0)
 
-        return None, False
+        return None, False, None
 
 
 # ---------------------------------------------------------------------------

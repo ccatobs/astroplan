@@ -42,14 +42,18 @@ satellites:
     id_range: [901, 999]
 
 # Small body (asteroid/comet) kernels.
-# These give positions relative to the Solar System Barycenter directly.
-# Add one entry per body as you download individual files.
 #
 # Asteroid NAIF IDs: 2000000 + asteroid number  (e.g. Ceres = 2000001)
 # Comet   NAIF IDs: 1000000 + comet number
-asteroids: []
-# Example:
-#   - file: bsp/asteroids/sb_ceres_ssd.bsp
-#     ids: [2000001]
-#   - file: bsp/asteroids/sb_vesta_ssd.bsp
-#     ids: [2000004]
+#
+# center: NAIF ID of the reference body used in the BSP file.
+#   center: 10  -- Sun-relative (e.g. codes_300ast_20100725.bsp)
+#   center: 0   -- SSB-relative (default; can be omitted)
+#
+# Body coverage can be specified as:
+#   id_range: [lo, hi]  -- all IDs in the inclusive range
+#   ids: [id1, id2, ...]  -- explicit list
+asteroids:
+  - file: bsp/codes_300ast_20100725.bsp   # 300 major asteroids, Sun-relative, DE405
+    center: 10
+    id_range: [2000001, 2000953]
