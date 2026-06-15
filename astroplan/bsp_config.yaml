@@ -13,32 +13,31 @@
 
 # Always loaded. Covers: planet barycenters (1-9), Sun (10),
 # Mercury (199), Venus (299), Moon (301), Earth (399).
-planetary: bsp/de430.bsp
+planetary: bsp/de442s_2099.bsp
 
-# Planetary satellite kernels.
-# Each gives positions relative to its planet barycenter;
-# EphemerisManager chains them with the planetary kernel automatically.
+# Planetary satellite kernels. Note that the example kernels here do not contain
+# all satellites. Modify based on use cases.
 #
 # NAIF ID scheme: first digit = planet barycenter (4=Mars, 5=Jupiter, ...)
 #   4xx = Mars system    5xx = Jupiter system   6xx = Saturn system
 #   7xx = Uranus system  8xx = Neptune system   9xx = Pluto system
 satellites:
-  - file: bsp/mar097.bsp       # Mars (499), Phobos (401), Deimos (402)
+  - file: bsp/mar099.bsp       # Mars (499), Phobos (401), Deimos (402)
     id_range: [401, 499]
 
-  - file: bsp/jup365.bsp       # Io (501), Europa (502), Ganymede (503), Callisto (504), ...
+  - file: bsp/jup365.bsp       # Jupter (599), Io (501), Europa (502), Ganymede (503), Callisto (504), ...
     id_range: [501, 599]
 
-  - file: bsp/sat441.bsp       # Mimas (601), Enceladus (602), Titan (606), ...
+  - file: bsp/sat441.bsp       # Saturn (699), Mimas (601), Enceladus (602), Titan (606), ...
     id_range: [601, 699]
 
-  - file: bsp/ura111.bsp       # Ariel (701), Umbriel (702), Titania (703), Oberon (704), ...
+  - file: bsp/ura111xl-701.bsp # Uranus (799), Ariel (701), Umbriel (702), ...
     id_range: [701, 799]
 
-  - file: bsp/nep095.bsp       # Triton (801), Nereid (802), ...
+  - file: bsp/nep097xl-801.bsp # Neptune (899), Triton (801)
     id_range: [801, 899]
 
-  - file: bsp/plu058.bsp       # Charon (901), Nix (902), Hydra (903), ...
+  - file: bsp/plu060.bsp       # Pluto (999), Charon (901), Nix (902), Hydra (903), ...
     id_range: [901, 999]
 
 # Small body (asteroid/comet) kernels.
@@ -46,14 +45,16 @@ satellites:
 # Asteroid NAIF IDs: 2000000 + asteroid number  (e.g. Ceres = 2000001)
 # Comet   NAIF IDs: 1000000 + comet number
 #
-# center: NAIF ID of the reference body used in the BSP file.
-#   center: 10  -- Sun-relative (e.g. codes_300ast_20100725.bsp)
-#   center: 0   -- SSB-relative (default; can be omitted)
-#
 # Body coverage can be specified as:
 #   id_range: [lo, hi]  -- all IDs in the inclusive range
 #   ids: [id1, id2, ...]  -- explicit list
+#
+# Create individual bsp files at https://ssd.jpl.nasa.gov/horizons/app.html
+# by setting the ephemeris type to SPK
 asteroids:
-  - file: bsp/codes_300ast_20100725.bsp   # 300 major asteroids, Sun-relative, DE405
-    center: 10
-    id_range: [2000001, 2000953]
+  - file: bsp/20000001.bsp    # Ceres
+    ids: [2000001]
+
+commets:
+  - file: bsp/1000036.bsp     # HALLEY
+    ids: [1000036]

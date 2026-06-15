@@ -24,11 +24,12 @@ keywords = [
 dynamic = [
     "version"
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.23.2",
     "astropy>=6.0",
-    "pytz"
+    "pytz",
+    "skyfield",
 ]
 
 [project.optional-dependencies]
@@ -67,6 +68,10 @@ namespaces = true
 [tool.setuptools.package-data]
 "astroplan.plots.tests" = [
     "baseline_images/*.png",
+]
+"astroplan" = [
+    "bsp_config.yaml",
+    "bsp/*",
 ]
 
 [tool.setuptools_scm]

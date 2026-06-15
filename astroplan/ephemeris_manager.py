@@ -7,20 +7,21 @@ from astropy.coordinates import SkyCoord
 import yaml
 from skyfield.api import Loader, wgs84, N, E
 
-# NAIF IDs for the names accepted by astropy.coordinates.get_body.
+# NAIF IDs for the names accepted by astropy.coordinates.get_body
 # Any other body must be specified by naif_id on the SolarSystemTarget.
+# These are included in the planetary BSP kernel file (e.g. de442)
 _NAIF_NAMES = {
     'sun': 10,
-    'mercury': 199,             # body is in de430
-    'venus': 299,               # body is in de430
+    'mercury': 199,
+    'venus': 299,
     'earth-moon-barycenter': 3,
-    'earth': 399,               # body is in de430
-    'moon': 301,                # in de430
-    'mars': 4,                  # barycenter; body 499 needs mar097.bsp
+    'earth': 399,
+    'moon': 301,
+    'mars': 4,                  # barycenter; body 499 needs mar090s.bsp
     'jupiter': 5,               # barycenter; body 599 needs jup365.bsp
     'saturn': 6,                # barycenter; body 699 needs sat441.bsp
-    'uranus': 7,                # barycenter; body 799 needs ura111.bsp
-    'neptune': 8,               # barycenter; body 899 needs nep095.bsp
+    'uranus': 7,                # barycenter; body 799 needs ura111xl-799.bsp
+    'neptune': 8,               # barycenter; body 899 needs nep097xl-899.bsp
 }
 
 
@@ -28,7 +29,7 @@ class EphemerisManager:
     """
     Unified interface to JPL BSP kernels via skyfield.
 
-    Loads the planetary ephemeris (de430/de440) on construction, then lazily
+    Loads the planetary ephemeris (e.g. de442) on construction, then lazily
     loads additional kernels for planetary satellites and small bodies as needed.
     All body lookups return a skyfield VectorFunction relative to the Solar
     System Barycenter, ready to be observed from a topocentric observer.
@@ -82,26 +83,17 @@ class EphemerisManager:
         naif_id : int
             NAIF integer ID (e.g. 499 = Mars, 401 = Phobos, 2000001 = Ceres).
         """
-        extra_path, is_satellite, center = self._find_extra_kernel(naif_id)
+        extra_path = self._find_extra_kernel(naif_id)
 
         if extra_path is None:
             return self._planetary[naif_id]
 
         extra_kernel = self._load_kernel(extra_path)
+        vec = extra_kernel[naif_id]
 
-        if is_satellite:
-            # Satellite BSP gives position relative to planet barycenter.
-            # Chain: SSB -> planet barycenter (planetary kernel)
-            #             -> satellite        (satellite kernel)
-            planet_bcb_id = naif_id // 100
-            return self._planetary[planet_bcb_id] + extra_kernel[naif_id]
-        elif center == 10:
-            # Sun-relative BSP (e.g. codes_300ast).
-            # Chain: SSB -> Sun (planetary kernel) -> asteroid (extra kernel)
-            return self._planetary['sun'] + extra_kernel[naif_id]
-        else:
-            # SSB-relative BSP directly.
-            return extra_kernel[naif_id]
+        if vec.center == 0:
+            return vec
+        return self._planetary[vec.center] + vec
 
     def resolve_naif_id(self, name):
         """
@@ -196,27 +188,24 @@ class EphemerisManager:
 
     def _find_extra_kernel(self, naif_id):
         """
-        Return (resolved_path, is_satellite, center) for the BSP covering naif_id,
-        or (None, False, None) if the planetary kernel is sufficient.
-
-        center is the NAIF ID of the reference body for the extra kernel:
-        0 = SSB, 10 = Sun (only meaningful for asteroids).
+        Return the resolved BSP path for naif_id, or None if the planetary kernel is sufficient.
         """
         for entry in self.config.get('satellites', []):
             lo, hi = entry['id_range']
             if lo <= naif_id <= hi:
-                return self._resolve(entry['file']), True, None
+                return self._resolve(entry['file'])
 
-        for entry in self.config.get('asteroids', []):
-            if 'id_range' in entry:
-                lo, hi = entry['id_range']
-                matched = lo <= naif_id <= hi
-            else:
-                matched = naif_id in entry.get('ids', [])
-            if matched:
-                return self._resolve(entry['file']), False, entry.get('center', 0)
+        for section in ('asteroids', 'comets'):
+            for entry in self.config.get(section, []):
+                if 'id_range' in entry:
+                    lo, hi = entry['id_range']
+                    matched = lo <= naif_id <= hi
+                else:
+                    matched = naif_id in entry.get('ids', [])
+                if matched:
+                    return self._resolve(entry['file'])
 
-        return None, False, None
+        return None
 
 
 # ---------------------------------------------------------------------------

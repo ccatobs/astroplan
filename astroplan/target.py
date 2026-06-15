@@ -6,8 +6,10 @@ from abc import ABCMeta
 # Third-party
 import astropy.units as u
 from astropy.coordinates import SkyCoord, ICRS, UnitSphericalRepresentation, AltAz
-from . import ephemeris_manager
 import numpy as np
+from importlib.resources import files
+
+from . import ephemeris_manager
 
 __all__ = ["Target", "FixedTarget", "NonFixedTarget", "ConstantElevationTarget", "SolarSystemTarget"]
 
@@ -329,6 +331,9 @@ def get_skycoord(targets, times=None, observer=None):
             raise ValueError('Either targets or times should be scalor, or the lengths of two lists should match')
     
     coords = []
+
+    # initialize ephemeris manager
+    ephemeris_manager.init(f'{files("astroplan")}/bsp_config.yaml')
 
     for itarget, target in enumerate(targets):
         if times is None:
