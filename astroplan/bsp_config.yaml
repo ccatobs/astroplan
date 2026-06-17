@@ -42,7 +42,8 @@ satellites:
 
 # Small body (asteroid/comet) kernels.
 #
-# Asteroid NAIF IDs: 2000000 + asteroid number  (e.g. Ceres = 2000001)
+# Asteroid NAIF IDs: 20000000 + asteroid number  (e.g. Ceres = 20000001)
+#                    (in 2019, it was extended from 7 digit to 8 digit IDs)
 # Comet   NAIF IDs: 1000000 + comet number
 #
 # Body coverage can be specified as:
@@ -53,7 +54,7 @@ satellites:
 # by setting the ephemeris type to SPK
 asteroids:
   - file: bsp/20000001.bsp    # Ceres
-    ids: [2000001]
+    ids: [20000001]
 
 commets:
   - file: bsp/1000036.bsp     # HALLEY

@@ -30,6 +30,7 @@ dependencies = [
     "astropy>=6.0",
     "pytz",
     "skyfield",
+    "spktype21",
 ]
 
 [project.optional-dependencies]

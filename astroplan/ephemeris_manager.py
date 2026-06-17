@@ -105,7 +105,7 @@ class EphemerisManager:
         Parameters
         ----------
         naif_id : int
-            NAIF integer ID (e.g. 499 = Mars, 401 = Phobos, 2000001 = Ceres).
+            NAIF integer ID (e.g. 499 = Mars, 401 = Phobos, 20000001 = Ceres).
         """
         extra_path, kind = self._find_extra_kernel(naif_id)
 
