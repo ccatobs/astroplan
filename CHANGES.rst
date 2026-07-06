@@ -1,6 +1,18 @@
-0.10 (unreleased)
+0.11 (unreleased)
 -----------------
 
+- Minimum Python version is now 3.11. Also bumped minversion
+  of dependencies. [#605]
+
+0.10.1 (2024-08-13)
+-------------------
+
+- Compatibility with numpy 2.0. [#587]
+
+0.10 (2024-04-04)
+-----------------
+
+- Fix compatibility with astropy v6.0.
 
 0.9.1 (2023-09-20)
 ------------------

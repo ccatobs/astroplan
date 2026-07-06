@@ -1,0 +1,61 @@
+# BSP kernel configuration for EphemerisManager
+#
+# Paths can be absolute or relative to this config file.
+#
+# Download planetary ephemeris from:
+#   https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/
+#
+# Download satellite ephemerides from:
+#   https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/satellites/
+#
+# Download asteroid ephemerides from:
+#   https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/asteroids/
+
+# Always loaded. Covers: planet barycenters (1-9), Sun (10),
+# Mercury (199), Venus (299), Moon (301), Earth (399).
+planetary: bsp/de442s_2099.bsp
+
+# Planetary satellite kernels. Note that the example kernels here do not contain
+# all satellites. Modify based on use cases.
+#
+# NAIF ID scheme: first digit = planet barycenter (4=Mars, 5=Jupiter, ...)
+#   4xx = Mars system    5xx = Jupiter system   6xx = Saturn system
+#   7xx = Uranus system  8xx = Neptune system   9xx = Pluto system
+satellites:
+  - file: bsp/mar099.bsp       # Mars (499), Phobos (401), Deimos (402)
+    id_range: [401, 499]
+
+  - file: bsp/jup365.bsp       # Jupter (599), Io (501), Europa (502), Ganymede (503), Callisto (504), ...
+    id_range: [501, 599]
+
+  - file: bsp/sat441.bsp       # Saturn (699), Mimas (601), Enceladus (602), Titan (606), ...
+    id_range: [601, 699]
+
+  - file: bsp/ura111xl-701.bsp # Uranus (799), Ariel (701), Umbriel (702), ...
+    id_range: [701, 799]
+
+  - file: bsp/nep097xl-801.bsp # Neptune (899), Triton (801)
+    id_range: [801, 899]
+
+  - file: bsp/plu060.bsp       # Pluto (999), Charon (901), Nix (902), Hydra (903), ...
+    id_range: [901, 999]
+
+# Small body (asteroid/comet) kernels.
+#
+# Asteroid NAIF IDs: 20000000 + asteroid number  (e.g. Ceres = 20000001)
+#                    (in 2019, it was extended from 7 digit to 8 digit IDs)
+# Comet   NAIF IDs: 1000000 + comet number
+#
+# Body coverage can be specified as:
+#   id_range: [lo, hi]  -- all IDs in the inclusive range
+#   ids: [id1, id2, ...]  -- explicit list
+#
+# Create individual bsp files at https://ssd.jpl.nasa.gov/horizons/app.html
+# by setting the ephemeris type to SPK
+asteroids:
+  - file: bsp/20000001.bsp    # Ceres
+    ids: [20000001]
+
+commets:
+  - file: bsp/1000036.bsp     # HALLEY
+    ids: [1000036]

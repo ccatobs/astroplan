@@ -1,14 +1,15 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
 
 # Standard library
 from abc import ABCMeta
 
 # Third-party
 import astropy.units as u
-from astropy.coordinates import SkyCoord, ICRS, UnitSphericalRepresentation, AltAz, get_body
+from astropy.coordinates import SkyCoord, ICRS, UnitSphericalRepresentation, AltAz
 import numpy as np
+from importlib.resources import files
+
+from . import ephemeris_manager
 
 __all__ = ["Target", "FixedTarget", "NonFixedTarget", "ConstantElevationTarget", "SolarSystemTarget"]
 
@@ -19,7 +20,7 @@ __all__ = ["Target", "FixedTarget", "NonFixedTarget", "ConstantElevationTarget",
 __doctest_requires__ = {'FixedTarget.*': ['astropy.modeling.Hermite1D']}
 
 
-class Target(object):
+class Target:
     """
     Abstract base class for target objects.
 
@@ -86,7 +87,7 @@ class FixedTarget(Target):
     for the coordinates of Sirius by name:
 
     >>> from astroplan import FixedTarget
-    >>> sirius = FixedTarget.from_name("Sirius")
+    >>> sirius = FixedTarget.from_name("Sirius")  # doctest: +REMOTE_DATA
     """
 
     def __init__(self, coord, name=None, **kwargs):
@@ -128,8 +129,8 @@ class FixedTarget(Target):
         Examples
         --------
         >>> from astroplan import FixedTarget
-        >>> sirius = FixedTarget.from_name("Sirius")
-        >>> sirius.coord                              # doctest: +FLOAT_CMP
+        >>> sirius = FixedTarget.from_name("Sirius")  # doctest: +REMOTE_DATA
+        >>> sirius.coord                              # doctest: +FLOAT_CMP +REMOTE_DATA
         <SkyCoord (ICRS): (ra, dec) in deg
             ( 101.28715533, -16.71611586)>
         """
@@ -276,6 +277,7 @@ class SolarSystemTarget(Target):
         """
         self.eph_name = eph_name
         self.name = name
+        self.naif_id = naif_id
 
 
 def get_skycoord(targets, times=None, observer=None):
@@ -330,6 +332,9 @@ def get_skycoord(targets, times=None, observer=None):
     
     coords = []
 
+    # initialize ephemeris manager
+    ephemeris_manager.init(f'{files("astroplan")}/bsp_config.yaml')
+
     for itarget, target in enumerate(targets):
         if times is None:
             time = None
@@ -364,7 +369,7 @@ def get_skycoord(targets, times=None, observer=None):
             elif isinstance(target, SolarSystemTarget):
                 if time is None:
                     raise ValueError('times should be given to calculate the coordinates for SolarSystemTarget')
-                coord = get_body(target.eph_name.lower(), time, location=observer.location)
+                coord = ephemeris_manager.get_skycoord(target.naif_id or target.eph_name, time, observer.location)
                 coords.append(coord)
             else:
                 coord = target
@@ -434,7 +439,7 @@ def get_skycoord(targets, times=None, observer=None):
         return SkyCoord(longitudes, latitudes, distances, frame=frame)
 
 
-class SpecialObjectFlag(object):
+class SpecialObjectFlag:
     """
     Flag this object as a special non-fixed target, which has a ``get_*`` method
     within astropy (like the Sun or Moon)
