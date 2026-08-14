@@ -4,11 +4,12 @@ from pathlib import Path
 
 import astropy.units as u
 from astropy.coordinates import SkyCoord
-import yaml
+import numpy as np
 from skyfield.api import Loader, wgs84, N, E
 from skyfield.constants import AU_KM
 from skyfield.vectorlib import VectorFunction
 from spktype21 import SPKType21
+import yaml
 
 # NAIF IDs for the names accepted by astropy.coordinates.get_body
 # Any other body must be specified by naif_id on the SolarSystemTarget.
@@ -45,7 +46,18 @@ class Type21Object(VectorFunction):
         self.center = center
 
     def _at(self, t):
-        r, v = self.kernel.compute_type21(self.center, self.target, t.whole, t.tdb_fraction)
+        whole = t.whole
+        frac = t.tdb_fraction
+        if np.ndim(whole) == 0:
+            r, v = self.kernel.compute_type21(self.center, self.target, whole, frac)
+        else:
+            # spktype21.compute_type21 only accepts scalar time inputs
+            rs, vs = zip(*[
+                self.kernel.compute_type21(self.center, self.target, w, f)
+                for w, f in zip(whole, frac)
+            ])
+            r = np.stack(rs, axis=-1)
+            v = np.stack(vs, axis=-1)
         return r / AU_KM, v / AU_KM, None, None
 
 
